@@ -364,103 +364,35 @@ function renderResults(cards, grid) {
 
 /* ==========================================================
    BARAJAR
+   Usa el mismo render que el detalle (renderCardView).
    ========================================================== */
 function initBarajar() {
-  const wrap = document.getElementById("randomCardWrap");
-  const stage = document.getElementById("barajarStage");
-  const info = document.getElementById("randomInfo");
+  const view = document.getElementById("randomCardView");
   const shuffleBtn = document.getElementById("shuffleBtn");
-  const verMasBtn = document.getElementById("verMasBtn");
-  let currentCard = null;
 
   const shuffle = async () => {
-    if (wrap.classList.contains("loading")) return;
-    wrap.classList.add("loading");
+    if (view.classList.contains("loading")) return;
+    view.classList.add("loading");
     shuffleBtn.disabled = true;
 
     try {
       const card = await ScryfallService.fetchRandomCard();
-      renderRandomCard(card, wrap);
-      renderRandomInfo(card, info);
-      stage.classList.add("has-card");
-      info.classList.remove("hidden");
-      info.scrollTop = 0;
-      currentCard = card;
-      verMasBtn.classList.remove("hidden");
+      renderCardView(card, view);
     } catch (err) {
       console.error(err);
-      wrap.classList.remove("has-card");
-      wrap.innerHTML = `<p class="hint-text">Error al obtener carta. Tocá para reintentar.</p>`;
-      stage.classList.remove("has-card");
-      info.classList.add("hidden");
-      verMasBtn.classList.add("hidden");
-      currentCard = null;
+      view.innerHTML = `<div class="random-placeholder"><p class="hint-text">Error al obtener carta. Tocá para reintentar.</p></div>`;
     } finally {
-      wrap.classList.remove("loading");
+      view.classList.remove("loading");
       shuffleBtn.disabled = false;
     }
   };
 
-  wrap.addEventListener("click", shuffle);
-  wrap.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      shuffle();
-    }
-  });
   shuffleBtn.addEventListener("click", shuffle);
 
-  verMasBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (currentCard) showCardDetail(currentCard);
+  // Tocar la carta (o el recuadro inicial) también baraja
+  view.addEventListener("click", (e) => {
+    if (e.target.closest(".detail-img, .random-placeholder")) shuffle();
   });
-}
-
-function renderRandomCard(card, wrap) {
-  const imgUrl = card.image_uris?.large || card.image_uris?.normal || card.image_uris?.small || null;
-  wrap.innerHTML = "";
-  wrap.classList.add("has-card");
-  wrap.setAttribute("aria-label", `${card.name}. Barajar otra carta aleatoria`);
-
-  if (imgUrl) {
-    const img = document.createElement("img");
-    img.src = imgUrl;
-    img.alt = card.name;
-    wrap.appendChild(img);
-  } else {
-    // Sin imagen (p. ej. sin image_uris): se muestra el nombre como texto
-    wrap.classList.remove("has-card");
-    const p = document.createElement("p");
-    p.className = "hint-text";
-    p.textContent = card.name;
-    wrap.appendChild(p);
-  }
-}
-
-/** Datos de la carta sacada al azar (reutiliza bullet/format*). */
-function renderRandomInfo(card, info) {
-  info.innerHTML = `
-    <p class="detail-name">${escapeHtml(card.name)}</p>
-    <div class="detail-list">
-      ${bullet("Coste de maná", formatManaCost(card.mana_cost))}
-      ${bullet("Tipo", card.type_line)}
-      ${bullet("Poder/Resistencia", card.power && card.toughness ? `${card.power}/${card.toughness}` : "")}
-      ${bullet("Lealtad", card.loyalty)}
-      ${bullet("Set", card.set_name)}
-      ${bullet("Rareza", capitalize(card.rarity))}
-      ${bullet("Artista", card.artist)}
-    </div>
-    ${card.oracle_text ? `
-    <div class="detail-row">
-      <span class="label">Texto</span>
-      <span class="detail-oracle">${escapeHtml(card.oracle_text)}</span>
-    </div>` : ""}
-    ${card.flavor_text ? `
-    <div class="detail-row">
-      <span class="label">Ambientación</span>
-      <span class="detail-oracle detail-flavor">${escapeHtml(card.flavor_text)}</span>
-    </div>` : ""}
-  `;
 }
 
 /* ==========================================================
@@ -471,10 +403,18 @@ function initDetailClose() {
 }
 
 function showCardDetail(card) {
-  const scroll = document.getElementById("detailScroll");
+  renderCardView(card, document.getElementById("detailScroll"));
+  openDetailView();
+}
+
+/**
+ * Render compartido por el detalle y Barajar: imagen + datos + carrusel
+ * de otras obras del artista. Una sola función para que no diverjan.
+ */
+function renderCardView(card, container) {
   const imgUrl = card.image_uris?.large || card.image_uris?.normal || null;
 
-  scroll.innerHTML = `
+  container.innerHTML = `
     ${imgUrl ? `<img class="detail-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(card.name)}">` : ""}
     <div class="detail-info">
       <p class="detail-name">${escapeHtml(card.name)}</p>
@@ -511,25 +451,25 @@ function showCardDetail(card) {
       ${renderLinks(card)}
     </div>
 
-    <div class="artist-carousel-wrap" id="artistCarouselWrap">
+    <div class="artist-carousel-wrap">
       <h2 class="carousel-title">Otras obras del mismo artista</h2>
-      <div class="artist-carousel" id="artistCarousel">
+      <div class="artist-carousel">
         <p class="artist-carousel-empty">Buscando más ilustraciones...</p>
       </div>
     </div>
   `;
 
-  openDetailView();
-  loadArtistCarousel(card);
+  container.scrollTop = 0;
+  loadArtistCarousel(card, container);
 }
 
 /**
  * Carga y renderiza el carrusel de otras cartas del mismo artista.
  * Se ejecuta después de mostrar el detalle para no bloquear el render inicial.
  */
-async function loadArtistCarousel(card) {
-  const carousel = document.getElementById("artistCarousel");
-  const wrap = document.getElementById("artistCarouselWrap");
+async function loadArtistCarousel(card, container) {
+  const carousel = container.querySelector(".artist-carousel");
+  const wrap = container.querySelector(".artist-carousel-wrap");
   if (!carousel || !wrap) return;
 
   if (!card.artist) {

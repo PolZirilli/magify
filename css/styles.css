@@ -148,7 +148,7 @@ input {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  height: var(--bar-head-h, 56px);
+  height: 56px;
   margin-bottom: 12px;
 }
 
@@ -319,103 +319,94 @@ input {
 }
 
 /* ---------- Barajar ----------
-   La carta se dimensiona por ancho disponible Y alto disponible:
-   --card-h = alto de pantalla menos header compacto, acciones, nav y paddings. */
-#view-barajar {
-  --bar-head-h: 56px;
-  --bar-actions-h: 56px;
-  --bar-pad: 12px;
-  --bar-chrome: calc(var(--bar-head-h) + var(--bar-actions-h) + var(--nav-h) + env(safe-area-inset-bottom) + env(safe-area-inset-top) + var(--bar-pad) * 3 + 24px);
-  --card-h: max(240px, calc(100vh - var(--bar-chrome)));
-  padding-top: calc(var(--bar-pad) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--bar-pad));
+   El resultado reutiliza las clases del detalle (.detail-scroll, .detail-img,
+   .detail-info, carrusel) para ser idéntico. */
+/* Mobile: header compacto y botón Barajar en una sola fila (poco espacio superior) */
+.barajar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-@supports (height: 100dvh) {
+.barajar-top .app-header-compact {
+  height: 48px;
+  margin: 0;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.barajar-top .app-header-compact .app-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.barajar-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.barajar-bar .action-btn {
+  min-width: 140px;
+  min-height: 44px;
+}
+
+/* Mobile: la carta de Barajar se dimensiona por ancho Y alto disponible,
+   para que carta + botón queden sobre el nav (datos y carrusel debajo, con scroll). */
+@media (max-width: 899px) {
   #view-barajar {
-    --card-h: max(240px, calc(100dvh - var(--bar-chrome)));
+    --card-h: max(220px, calc(100vh - 12px - 48px - 12px - env(safe-area-inset-top) - var(--nav-h) - env(safe-area-inset-bottom) - 32px));
+  }
+
+  @supports (height: 100dvh) {
+    #view-barajar {
+      --card-h: max(220px, calc(100dvh - 12px - 48px - 12px - env(safe-area-inset-top) - var(--nav-h) - env(safe-area-inset-bottom) - 32px));
+    }
+  }
+
+  #view-barajar {
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .random-view .detail-img {
+    width: min(95%, calc(var(--card-h) * 5 / 7));
+    aspect-ratio: 5 / 7;
+    object-fit: cover;
+  }
+
+  .random-placeholder {
+    width: min(95%, calc(var(--card-h) * 5 / 7));
   }
 }
 
-.barajar-stage {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  justify-items: center;
-  gap: 16px;
-}
-
-.barajar-card-col {
-  width: min(100%, calc(var(--card-h) * 5 / 7));
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.random-card-wrap {
-  width: 100%;
-  aspect-ratio: 5 / 7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-card);
-  border: 2px dashed rgba(212, 175, 55, 0.4);
-  padding: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.12s ease, opacity 0.15s ease;
-}
-
-.random-card-wrap.has-card {
-  border: none;
-  padding: 0;
-}
-
-.random-card-wrap:active {
-  transform: scale(0.98);
-}
-
-.random-card-wrap.loading {
+.random-view.loading {
   opacity: 0.55;
   pointer-events: none;
 }
 
-.random-card-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.random-view .detail-img {
+  cursor: pointer;
+}
+
+.random-placeholder {
+  width: 95%;
+  max-width: 460px;
+  aspect-ratio: 5 / 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  border: 2px dashed rgba(212, 175, 55, 0.4);
   border-radius: var(--radius-card);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
 }
 
 .hint-text {
   font-size: 9px;
   color: rgba(245, 240, 232, 0.55);
   line-height: 1.8;
-}
-
-.barajar-actions {
-  height: var(--bar-actions-h);
-  display: flex;
-  gap: 10px;
-}
-
-.barajar-actions .action-btn,
-.barajar-actions .ver-mas-btn {
-  flex: 1 1 0;
-}
-
-.barajar-info {
-  width: 100%;
-  max-width: 560px;
-  background: rgba(212, 175, 55, 0.08);
-  border-radius: var(--radius-card);
-  padding: 20px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-wrap: anywhere;
 }
 
 /* Botones de acción (Barajar, Ver más, paginación) */
@@ -496,15 +487,18 @@ input {
 }
 
 .close-btn {
-  position: absolute;
-  top: calc(18px + env(safe-area-inset-top));
-  right: 18px;
-  z-index: 5;
-  background: none;
-  border: none;
+  /* Fija: siempre visible aunque se scrollee el detalle (z-index bajo el nav) */
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 12px;
+  z-index: 25;
+  background: rgba(23, 11, 40, 0.85);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
   color: var(--gold);
   cursor: pointer;
   padding: 6px;
+  display: flex;
 }
 
 .detail-app-header {
@@ -645,6 +639,9 @@ input {
 }
 
 .artist-carousel {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   display: flex;
   gap: 12px;
   overflow-x: auto;
@@ -687,6 +684,11 @@ input {
   text-align: center;
   width: 100%;
   margin: 0;
+}
+
+/* Logo del navbar lateral: sólo desktop */
+.side-logo {
+  display: none;
 }
 
 /* ---------- Nav inferior ----------
@@ -754,19 +756,83 @@ input {
    Mobile/tablet (< 900px): se mantiene apilado (carta arriba, info abajo).
    Desktop (>= 900px): carta a la izquierda, info a la derecha. */
 @media (min-width: 900px) {
-  /* Layout desktop: contenedor ancho ~1200px */
-  .view {
-    max-width: 1200px;
-    padding-left: 32px;
-    padding-right: 32px;
+  /* Layout desktop: navbar lateral fijo a la izquierda y contenido en el resto */
+  :root {
+    --side-w: 200px;
   }
 
+  .app {
+    margin-left: var(--side-w);
+  }
+
+  .view,
   .view.detail-view {
-    max-width: 1080px;
+    max-width: 1280px;
+    padding: 32px 36px 40px 36px;
   }
 
-  .app-header:not(.app-header-compact) {
+  /* Los logos del header se quitan: el logo vive en el navbar lateral */
+  .app-header .app-logo,
+  .app-header .brand,
+  .detail-app-header {
+    display: none;
+  }
+
+  .app-header-compact {
+    height: auto;
+  }
+
+  .app-header {
     margin-bottom: 20px;
+  }
+
+  .bottom-nav {
+    top: 0;
+    right: auto;
+    width: var(--side-w);
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 28px 16px 24px 16px;
+    border-top: none;
+    border-right: 2px solid var(--gold);
+    box-shadow: 6px 0 20px rgba(0, 0, 0, 0.45);
+  }
+
+  .side-logo {
+    display: block;
+    width: 112px;
+    height: 112px;
+    margin-bottom: 20px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  }
+
+  .nav-btn {
+    width: 100%;
+    height: 76px;
+  }
+
+  /* Desktop: título arriba y botón Barajar centrado debajo */
+  .barajar-top {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .barajar-top .app-header-compact {
+    height: auto;
+    margin: 0 0 16px 0;
+    justify-content: center;
+  }
+
+  .barajar-bar {
+    justify-content: center;
+  }
+
+  .barajar-bar .action-btn {
+    width: 100%;
+    max-width: 420px;
   }
 
   .search-wrap {
@@ -785,28 +851,13 @@ input {
     font-size: 9px;
   }
 
-  /* Barajar: carta a un lado, datos al otro */
-  .barajar-stage.has-card {
-    grid-template-columns: min(calc(var(--card-h) * 5 / 7), 45%) minmax(0, 560px);
-    justify-content: center;
-    justify-items: stretch;
-    align-items: start;
-    gap: 40px;
-  }
-
-  .barajar-stage.has-card .barajar-card-col {
-    width: 100%;
-  }
-
-  .barajar-info {
-    max-width: none;
-    max-height: calc(var(--card-h) + var(--bar-actions-h) + 12px);
-    overflow-y: auto;
-  }
 
   .detail-scroll {
     display: grid;
     grid-template-columns: minmax(280px, 420px) 1fr;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
     align-items: start;
     gap: 40px;
     margin-top: 30px;
