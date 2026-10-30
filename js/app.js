@@ -34,9 +34,15 @@ function initNav() {
   const buttons = document.querySelectorAll(".nav-btn");
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      buttons.forEach((b) => b.classList.remove("active"));
+      buttons.forEach((b) => {
+        b.classList.remove("active");
+        b.removeAttribute("aria-current");
+      });
       btn.classList.add("active");
+      btn.setAttribute("aria-current", "page");
+      // showView oculta también el detalle: tocar el nav desde el detalle lo cierra
       showView(btn.dataset.target);
+      window.scrollTo(0, 0);
     });
   });
 }
@@ -47,15 +53,13 @@ function showView(name) {
   });
 }
 
+/* El nav inferior queda siempre visible, también en el detalle */
 function openDetailView() {
-  document.getElementById("bottomNav").classList.add("hidden");
-  document.querySelectorAll(".view").forEach((view) => {
-    view.classList.toggle("hidden", view.dataset.view !== "detail");
-  });
+  showView("detail");
+  window.scrollTo(0, 0);
 }
 
 function closeDetailView() {
-  document.getElementById("bottomNav").classList.remove("hidden");
   const activeTarget = document.querySelector(".nav-btn.active")?.dataset.target || "buscador";
   showView(activeTarget);
 }
@@ -63,34 +67,59 @@ function closeDetailView() {
 /* ==========================================================
    BUSCADOR
    ========================================================== */
+const RESULTS_PER_PAGE_DESKTOP = 8; // grilla 4x2
+const RESULTS_STEP_MOBILE = 4;      // grilla 2x2 por tanda
+const desktopMQ = window.matchMedia("(min-width: 900px)");
+
+/* Estado de los resultados: se conserva al cambiar de breakpoint */
+const resultsState = {
+  cards: [],
+  mobileCount: RESULTS_STEP_MOBILE,
+  page: 1,
+  searchSeq: 0,
+};
+
 function initBuscador() {
   const form = document.getElementById("searchForm");
   const input = document.getElementById("searchInput");
   const status = document.getElementById("searchStatus");
   const grid = document.getElementById("resultsGrid");
   const autoList = document.getElementById("autocompleteList");
+  let autocomplete = null;
 
-  form.addEventListener("submit", async (e) => {
+  /* Confirma una consulta: cancela el predictivo pendiente, cierra la lista,
+     baja el teclado en móvil y busca. */
+  const confirmSearch = (query) => {
+    autocomplete.cancel();
+    if (!desktopMQ.matches) input.blur();
+    return runSearch(query, status, grid);
+  };
+
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    hideAutocomplete(autoList);
-    await runSearch(input.value.trim(), status, grid);
+    confirmSearch(input.value.trim());
   });
 
-  initAutocomplete(input, autoList, (chosenName) => {
+  autocomplete = initAutocomplete(input, autoList, (chosenName) => {
     input.value = chosenName;
-    runSearch(chosenName, status, grid);
+    confirmSearch(chosenName);
   });
+
+  initResultsControls(grid);
 }
 
 async function runSearch(query, status, grid) {
   if (!query) return;
 
+  const mySeq = ++resultsState.searchSeq;
   status.textContent = "Buscando...";
   status.classList.remove("error");
-  grid.innerHTML = "";
+  resultsState.cards = [];
+  renderResultsView(grid);
 
   try {
     const cards = await ScryfallService.searchCards(query);
+    if (mySeq !== resultsState.searchSeq) return; // llegó una búsqueda más nueva
 
     if (cards.length === 0) {
       status.textContent = "No se encontraron cartas.";
@@ -98,8 +127,12 @@ async function runSearch(query, status, grid) {
     }
 
     status.textContent = `${cards.length} resultado${cards.length === 1 ? "" : "s"}`;
-    renderResults(cards, grid);
+    resultsState.cards = cards;
+    resultsState.mobileCount = RESULTS_STEP_MOBILE;
+    resultsState.page = 1;
+    renderResultsView(grid);
   } catch (err) {
+    if (mySeq !== resultsState.searchSeq) return;
     console.error(err);
     status.textContent = "Error al buscar. Intentá de nuevo.";
     status.classList.add("error");
@@ -107,14 +140,34 @@ async function runSearch(query, status, grid) {
 }
 
 /* ---------- Autocompletado predictivo ---------- */
+/**
+ * Devuelve { cancel }: cancela el timer, invalida respuestas en vuelo
+ * (token de secuencia) y cierra la lista.
+ */
 function initAutocomplete(input, listEl, onSelect) {
   let debounceTimer = null;
   let activeIndex = -1;
   let currentItems = [];
+  let seq = 0;
+
+  const cancel = () => {
+    clearTimeout(debounceTimer);
+    seq++;
+    activeIndex = -1;
+    currentItems = [];
+    hideAutocomplete(listEl);
+  };
+
+  // Click en una sugerencia: pasa por el mismo camino que Enter
+  const select = (name) => {
+    cancel();
+    onSelect(name);
+  };
 
   input.addEventListener("input", () => {
     const query = input.value.trim();
     clearTimeout(debounceTimer);
+    const mySeq = ++seq;
 
     if (query.length < 2) {
       hideAutocomplete(listEl);
@@ -124,9 +177,10 @@ function initAutocomplete(input, listEl, onSelect) {
     debounceTimer = setTimeout(async () => {
       try {
         const suggestions = await ScryfallService.autocomplete(query);
-        renderAutocomplete(suggestions, listEl, input, onSelect);
-        currentItems = suggestions;
+        if (mySeq !== seq) return; // respuesta tardía: se descarta
+        currentItems = suggestions.slice(0, 8);
         activeIndex = -1;
+        renderAutocomplete(suggestions, listEl, input, select);
       } catch (err) {
         console.error(err);
       }
@@ -147,10 +201,9 @@ function initAutocomplete(input, listEl, onSelect) {
       updateActiveItem(items, activeIndex);
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      onSelect(currentItems[activeIndex]);
-      hideAutocomplete(listEl);
+      select(currentItems[activeIndex]);
     } else if (e.key === "Escape") {
-      hideAutocomplete(listEl);
+      cancel();
     }
   });
 
@@ -159,6 +212,8 @@ function initAutocomplete(input, listEl, onSelect) {
       hideAutocomplete(listEl);
     }
   });
+
+  return { cancel };
 }
 
 function renderAutocomplete(suggestions, listEl, input, onSelect) {
@@ -172,10 +227,7 @@ function renderAutocomplete(suggestions, listEl, input, onSelect) {
     const li = document.createElement("li");
     li.className = "autocomplete-item";
     li.textContent = name;
-    li.addEventListener("click", () => {
-      onSelect(name);
-      hideAutocomplete(listEl);
-    });
+    li.addEventListener("click", () => onSelect(name));
     listEl.appendChild(li);
   });
 
@@ -192,16 +244,107 @@ function hideAutocomplete(listEl) {
   listEl.innerHTML = "";
 }
 
+/* ---------- Resultados: móvil (de a 4 con scroll) / desktop (paginado de 8) ---------- */
+function initResultsControls(grid) {
+  const moreWrap = document.getElementById("resultsMore");
+  const sentinel = document.getElementById("resultsSentinel");
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+  const prevBtn = document.getElementById("prevPageBtn");
+  const nextBtn = document.getElementById("nextPageBtn");
+
+  loadMoreBtn.addEventListener("click", () => loadMoreMobile(grid));
+
+  prevBtn.addEventListener("click", () => goToPage(resultsState.page - 1, grid));
+  nextBtn.addEventListener("click", () => goToPage(resultsState.page + 1, grid));
+
+  // Scroll infinito: tras un scroll real del usuario se comprueba si el sentinel
+  // está cerca del borde inferior y se carga un lote (máx. uno por evento de scroll).
+  // El render inicial no auto-carga: siempre muestra exactamente 4.
+  window.addEventListener("scroll", () => {
+    if (desktopMQ.matches || moreWrap.classList.contains("hidden")) return;
+    if (sentinel.getBoundingClientRect().top <= window.innerHeight + 160) {
+      loadMoreMobile(grid);
+    }
+  }, { passive: true });
+  resultsState.sentinel = sentinel;
+  resultsState.moreWrap = moreWrap;
+
+  // Cambio de breakpoint: re-render en el modo correcto conservando la búsqueda
+  const onChange = () => renderResultsView(grid);
+  if (desktopMQ.addEventListener) desktopMQ.addEventListener("change", onChange);
+  else desktopMQ.addListener(onChange);
+}
+
+function renderResultsView(grid) {
+  const { cards } = resultsState;
+  const moreWrap = document.getElementById("resultsMore");
+  const pager = document.getElementById("resultsPager");
+
+  grid.innerHTML = "";
+  moreWrap.classList.add("hidden");
+  pager.classList.add("hidden");
+  if (cards.length === 0) return;
+
+  if (desktopMQ.matches) {
+    const totalPages = Math.ceil(cards.length / RESULTS_PER_PAGE_DESKTOP);
+    resultsState.page = Math.min(Math.max(resultsState.page, 1), totalPages);
+    const start = (resultsState.page - 1) * RESULTS_PER_PAGE_DESKTOP;
+    renderResults(cards.slice(start, start + RESULTS_PER_PAGE_DESKTOP), grid);
+
+    if (totalPages > 1) {
+      pager.classList.remove("hidden");
+      document.getElementById("pagerInfo").textContent = `Página ${resultsState.page} de ${totalPages}`;
+      document.getElementById("prevPageBtn").disabled = resultsState.page <= 1;
+      document.getElementById("nextPageBtn").disabled = resultsState.page >= totalPages;
+    }
+  } else {
+    renderResults(cards.slice(0, resultsState.mobileCount), grid);
+    updateMoreControls();
+  }
+}
+
+function goToPage(page, grid) {
+  resultsState.page = page;
+  renderResultsView(grid);
+  if (grid.getBoundingClientRect().top < 0) grid.scrollIntoView({ block: "start" });
+}
+
+function loadMoreMobile(grid) {
+  const { cards } = resultsState;
+  if (desktopMQ.matches || resultsState.mobileCount >= cards.length) return;
+  const from = resultsState.mobileCount;
+  resultsState.mobileCount = Math.min(cards.length, from + RESULTS_STEP_MOBILE);
+  renderResults(cards.slice(from, resultsState.mobileCount), grid);
+  updateMoreControls();
+}
+
+/* Muestra/oculta "Ver más" según queden resultados por cargar */
+function updateMoreControls() {
+  const { cards, mobileCount, moreWrap } = resultsState;
+  moreWrap.classList.toggle("hidden", mobileCount >= cards.length);
+}
+
 function renderResults(cards, grid) {
   cards.forEach((card) => {
     const el = document.createElement("div");
     el.className = "result-card";
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", `Ver detalle de ${card.name}`);
 
     const imgUrl = card.image_uris?.normal || card.image_uris?.small || null;
 
-    el.innerHTML = imgUrl
-      ? `<img src="${imgUrl}" alt="${escapeHtml(card.name)}" loading="lazy">`
-      : `<div class="placeholder-art"></div>`;
+    if (imgUrl) {
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      img.alt = card.name;
+      img.loading = "lazy";
+      el.appendChild(img);
+    } else {
+      const ph = document.createElement("div");
+      ph.className = "placeholder-art";
+      el.appendChild(ph);
+    }
 
     const nameEl = document.createElement("p");
     nameEl.className = "card-name";
@@ -209,6 +352,12 @@ function renderResults(cards, grid) {
     el.appendChild(nameEl);
 
     el.addEventListener("click", () => showCardDetail(card));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        showCardDetail(card);
+      }
+    });
     grid.appendChild(el);
   });
 }
@@ -218,25 +367,37 @@ function renderResults(cards, grid) {
    ========================================================== */
 function initBarajar() {
   const wrap = document.getElementById("randomCardWrap");
+  const stage = document.getElementById("barajarStage");
+  const info = document.getElementById("randomInfo");
+  const shuffleBtn = document.getElementById("shuffleBtn");
   const verMasBtn = document.getElementById("verMasBtn");
   let currentCard = null;
 
   const shuffle = async () => {
     if (wrap.classList.contains("loading")) return;
     wrap.classList.add("loading");
+    shuffleBtn.disabled = true;
 
     try {
       const card = await ScryfallService.fetchRandomCard();
       renderRandomCard(card, wrap);
+      renderRandomInfo(card, info);
+      stage.classList.add("has-card");
+      info.classList.remove("hidden");
+      info.scrollTop = 0;
       currentCard = card;
       verMasBtn.classList.remove("hidden");
     } catch (err) {
       console.error(err);
+      wrap.classList.remove("has-card");
       wrap.innerHTML = `<p class="hint-text">Error al obtener carta. Tocá para reintentar.</p>`;
+      stage.classList.remove("has-card");
+      info.classList.add("hidden");
       verMasBtn.classList.add("hidden");
       currentCard = null;
     } finally {
       wrap.classList.remove("loading");
+      shuffleBtn.disabled = false;
     }
   };
 
@@ -247,6 +408,7 @@ function initBarajar() {
       shuffle();
     }
   });
+  shuffleBtn.addEventListener("click", shuffle);
 
   verMasBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -255,8 +417,10 @@ function initBarajar() {
 }
 
 function renderRandomCard(card, wrap) {
-  const imgUrl = card.image_uris?.normal || card.image_uris?.small || null;
+  const imgUrl = card.image_uris?.large || card.image_uris?.normal || card.image_uris?.small || null;
   wrap.innerHTML = "";
+  wrap.classList.add("has-card");
+  wrap.setAttribute("aria-label", `${card.name}. Barajar otra carta aleatoria`);
 
   if (imgUrl) {
     const img = document.createElement("img");
@@ -264,11 +428,39 @@ function renderRandomCard(card, wrap) {
     img.alt = card.name;
     wrap.appendChild(img);
   } else {
+    // Sin imagen (p. ej. sin image_uris): se muestra el nombre como texto
+    wrap.classList.remove("has-card");
     const p = document.createElement("p");
     p.className = "hint-text";
     p.textContent = card.name;
     wrap.appendChild(p);
   }
+}
+
+/** Datos de la carta sacada al azar (reutiliza bullet/format*). */
+function renderRandomInfo(card, info) {
+  info.innerHTML = `
+    <p class="detail-name">${escapeHtml(card.name)}</p>
+    <div class="detail-list">
+      ${bullet("Coste de maná", formatManaCost(card.mana_cost))}
+      ${bullet("Tipo", card.type_line)}
+      ${bullet("Poder/Resistencia", card.power && card.toughness ? `${card.power}/${card.toughness}` : "")}
+      ${bullet("Lealtad", card.loyalty)}
+      ${bullet("Set", card.set_name)}
+      ${bullet("Rareza", capitalize(card.rarity))}
+      ${bullet("Artista", card.artist)}
+    </div>
+    ${card.oracle_text ? `
+    <div class="detail-row">
+      <span class="label">Texto</span>
+      <span class="detail-oracle">${escapeHtml(card.oracle_text)}</span>
+    </div>` : ""}
+    ${card.flavor_text ? `
+    <div class="detail-row">
+      <span class="label">Ambientación</span>
+      <span class="detail-oracle detail-flavor">${escapeHtml(card.flavor_text)}</span>
+    </div>` : ""}
+  `;
 }
 
 /* ==========================================================
@@ -283,7 +475,7 @@ function showCardDetail(card) {
   const imgUrl = card.image_uris?.large || card.image_uris?.normal || null;
 
   scroll.innerHTML = `
-    ${imgUrl ? `<img class="detail-img" src="${imgUrl}" alt="${escapeHtml(card.name)}">` : ""}
+    ${imgUrl ? `<img class="detail-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(card.name)}">` : ""}
     <div class="detail-info">
       <p class="detail-name">${escapeHtml(card.name)}</p>
 
@@ -361,7 +553,7 @@ async function loadArtistCarousel(card) {
       const item = document.createElement("div");
       item.className = "artist-carousel-item";
       item.innerHTML = `
-        <img src="${imgUrl}" alt="${escapeHtml(otherCard.name)}" loading="lazy">
+        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(otherCard.name)}" loading="lazy">
         <p class="name">${escapeHtml(otherCard.name)}</p>
       `;
       item.addEventListener("click", () => showCardDetail(otherCard));
@@ -431,7 +623,7 @@ function renderLinks(card) {
   if (links.length === 0) return "";
 
   const items = links
-    .map((l) => `<a class="detail-link" href="${l.url}" title="${escapeHtml(l.title)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)} ↗</a>`)
+    .map((l) => `<a class="detail-link" href="${escapeHtml(l.url)}" title="${escapeHtml(l.title)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)} ↗</a>`)
     .join("");
 
   return `<div class="detail-links">${items}</div>`;

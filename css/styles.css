@@ -15,6 +15,9 @@
 
   --font-pixel: 'Press Start 2P', monospace;
   --radius-card: 24px;
+
+  /* Alto del contenido del nav inferior (sin safe-area) */
+  --nav-h: 76px;
 }
 
 * {
@@ -37,6 +40,12 @@ body {
 button,
 input {
   font-family: var(--font-pixel);
+}
+
+/* Foco visible para teclado */
+:focus-visible {
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
 }
 
 /* ---------- Fondo pixel art global ---------- */
@@ -92,7 +101,8 @@ input {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 24px 18px calc(96px + env(safe-area-inset-bottom)) 18px;
+  /* El nav es fixed: se reserva su alto real + safe-area abajo */
+  padding: calc(24px + env(safe-area-inset-top)) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px) 18px;
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -132,6 +142,36 @@ input {
   text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
+/* Header compacto (vista Barajar) */
+.app-header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: var(--bar-head-h, 56px);
+  margin-bottom: 12px;
+}
+
+.app-header-compact .app-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+}
+
+.app-header-compact .header-text {
+  text-align: left;
+}
+
+.app-header-compact .brand {
+  font-size: 8px;
+  margin: 0 0 4px 0;
+}
+
+.app-header-compact .title-gold {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
 /* ---------- Buscador: input ---------- */
 .search-wrap {
   position: relative;
@@ -146,6 +186,11 @@ input {
   border: 2px solid var(--gold);
   border-radius: 12px;
   padding: 4px 6px 4px 14px;
+}
+
+.search-bar:focus-within {
+  border-color: var(--celeste);
+  box-shadow: 0 0 10px rgba(125, 211, 252, 0.45);
 }
 
 .search-input {
@@ -171,6 +216,11 @@ input {
   display: flex;
   align-items: center;
   cursor: pointer;
+}
+
+.search-btn:focus-visible {
+  outline-offset: 0;
+  border-radius: 8px;
 }
 
 .search-status {
@@ -236,6 +286,10 @@ input {
   transition: transform 0.15s ease;
 }
 
+.result-card:focus-visible {
+  outline-offset: 3px;
+}
+
 .result-card:active {
   transform: scale(0.96);
 }
@@ -264,33 +318,62 @@ input {
   background: repeating-linear-gradient(45deg, var(--magicBlue), var(--magicBlue) 6px, var(--bgMain) 6px, var(--bgMain) 12px);
 }
 
-/* ---------- Barajar ---------- */
+/* ---------- Barajar ----------
+   La carta se dimensiona por ancho disponible Y alto disponible:
+   --card-h = alto de pantalla menos header compacto, acciones, nav y paddings. */
+#view-barajar {
+  --bar-head-h: 56px;
+  --bar-actions-h: 56px;
+  --bar-pad: 12px;
+  --bar-chrome: calc(var(--bar-head-h) + var(--bar-actions-h) + var(--nav-h) + env(safe-area-inset-bottom) + env(safe-area-inset-top) + var(--bar-pad) * 3 + 24px);
+  --card-h: max(240px, calc(100vh - var(--bar-chrome)));
+  padding-top: calc(var(--bar-pad) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--bar-pad));
+}
+
+@supports (height: 100dvh) {
+  #view-barajar {
+    --card-h: max(240px, calc(100dvh - var(--bar-chrome)));
+  }
+}
+
 .barajar-stage {
   flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+}
+
+.barajar-card-col {
+  width: min(100%, calc(var(--card-h) * 5 / 7));
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .random-card-wrap {
-  width: 78%;
-  max-width: 320px;
+  width: 100%;
   aspect-ratio: 5 / 7;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-card);
   border: 2px dashed rgba(212, 175, 55, 0.4);
-  padding: 0px;
+  padding: 8px;
   text-align: center;
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.15s ease;
 }
 
+.random-card-wrap.has-card {
+  border: none;
+  padding: 0;
+}
+
 .random-card-wrap:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .random-card-wrap.loading {
@@ -312,26 +395,103 @@ input {
   line-height: 1.8;
 }
 
+.barajar-actions {
+  height: var(--bar-actions-h);
+  display: flex;
+  gap: 10px;
+}
+
+.barajar-actions .action-btn,
+.barajar-actions .ver-mas-btn {
+  flex: 1 1 0;
+}
+
+.barajar-info {
+  width: 100%;
+  max-width: 560px;
+  background: rgba(212, 175, 55, 0.08);
+  border-radius: var(--radius-card);
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Botones de acción (Barajar, Ver más, paginación) */
+.action-btn,
 .ver-mas-btn {
-  background: none;
-  border: none;
-  color: var(--celeste);
+  min-height: 48px;
+  padding: 10px 14px;
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 10px;
+  line-height: 1.4;
   letter-spacing: 1px;
-  text-decoration: underline;
+  color: var(--gold);
+  background: rgba(76, 29, 149, 0.45);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
   cursor: pointer;
-  padding: 6px 10px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.ver-mas-btn {
+  color: var(--celeste);
+  border-color: var(--celeste);
   text-transform: uppercase;
 }
 
+.action-btn:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.18);
+}
+
+.action-btn:active:not(:disabled),
 .ver-mas-btn:active {
   opacity: 0.7;
 }
 
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- Resultados: "Ver más" (móvil) y paginación (desktop) ---------- */
+.results-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.results-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
+.results-more .action-btn {
+  min-width: 180px;
+  margin-top: 8px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.pager-info {
+  font-size: 10px;
+  color: var(--celeste);
+  min-width: 140px;
+  text-align: center;
+}
+
 /* ---------- Detalle de carta ---------- */
 .detail-view {
-  padding: 20px 18px calc(40px + env(safe-area-inset-bottom)) 18px;
+  padding: calc(20px + env(safe-area-inset-top)) 18px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px) 18px;
+  position: relative;
   overflow-y: auto;
 }
 
@@ -529,41 +689,46 @@ input {
   margin: 0;
 }
 
-/* ---------- Nav inferior ---------- */
+/* ---------- Nav inferior ----------
+   Siempre visible y fijo; las vistas reservan --nav-h + safe-area abajo. */
 .bottom-nav {
   position: fixed;
-  left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 10;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding: 6px 12px env(safe-area-inset-bottom) 12px;
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 10px;
-  background: rgb(255 255 255 / 0%);
-  backdrop-filter: blur(10px);
-  border: 0px solid var(--gold);
-  border-radius: 20px;
-  padding: 0px 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  background: rgba(23, 11, 40, 0.92);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 2px solid var(--gold);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .nav-btn {
-  width: 84px;
-  min-width: 84px;
-  height: 72px;
+  width: 96px;
+  height: calc(var(--nav-h) - 12px);
   border-radius: 16px;
   background: transparent;
   border: none;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.6;
   transition: opacity 0.15s ease, background 0.15s ease;
 }
 
 .nav-btn img {
-  width: 84px;
-  height: 70px;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   image-rendering: pixelated;
 }
 
@@ -572,25 +737,16 @@ input {
   background: rgba(212, 175, 55, 0.18);
 }
 
-/* ---------- Responsive: pantallas más anchas (tablet/desktop) ---------- */
+/* ---------- Responsive ----------
+   Mobile-first: < 900px grilla 2x2 en una columna centrada. */
 @media (min-width: 640px) {
   .app {
     align-items: center;
   }
 
   .view {
-    max-width: 640px;
+    max-width: 720px;
     width: 100%;
-  }
-
-  .card-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (min-width: 960px) {
-  .card-grid {
-    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -598,8 +754,54 @@ input {
    Mobile/tablet (< 900px): se mantiene apilado (carta arriba, info abajo).
    Desktop (>= 900px): carta a la izquierda, info a la derecha. */
 @media (min-width: 900px) {
+  /* Layout desktop: contenedor ancho ~1200px */
+  .view {
+    max-width: 1200px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
   .view.detail-view {
     max-width: 1080px;
+  }
+
+  .app-header:not(.app-header-compact) {
+    margin-bottom: 20px;
+  }
+
+  .search-wrap {
+    width: 100%;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  .result-card .card-name {
+    font-size: 9px;
+  }
+
+  /* Barajar: carta a un lado, datos al otro */
+  .barajar-stage.has-card {
+    grid-template-columns: min(calc(var(--card-h) * 5 / 7), 45%) minmax(0, 560px);
+    justify-content: center;
+    justify-items: stretch;
+    align-items: start;
+    gap: 40px;
+  }
+
+  .barajar-stage.has-card .barajar-card-col {
+    width: 100%;
+  }
+
+  .barajar-info {
+    max-width: none;
+    max-height: calc(var(--card-h) + var(--bar-actions-h) + 12px);
+    overflow-y: auto;
   }
 
   .detail-scroll {
@@ -627,5 +829,17 @@ input {
     grid-column: 1 / -1;
     max-width: 100%;
     margin-top: 10px;
+  }
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pixel-bg span {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  * {
+    transition: none !important;
   }
 }
