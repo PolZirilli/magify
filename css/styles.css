@@ -21,7 +21,7 @@
   --gold-dark: #8a6d12;
 
   /* Alto del contenido del nav inferior (sin safe-area) */
-  --nav-h: 76px;
+  --nav-h: 80px;
 }
 
 * {
@@ -242,16 +242,13 @@ input {
   border-radius: 0;
   margin: var(--px);
   padding: 4px 6px 4px 14px;
-  /* Borde pixel con esquinas escalonadas (4 franjas sin esquina) */
-  box-shadow: 0 calc(var(--px) * -1) 0 0 var(--gold), 0 var(--px) 0 0 var(--gold),
-    calc(var(--px) * -1) 0 0 0 var(--gold), var(--px) 0 0 0 var(--gold),
-    6px 6px 0 0 var(--blackPixel);
+  /* Técnica pixel compartida: ver "Botones pixel art" (--edge + --drop) */
+  --drop: 6px 6px 0 0 var(--blackPixel);
+  box-shadow: var(--edge), var(--drop);
 }
 
 .search-bar:focus-within {
-  box-shadow: 0 calc(var(--px) * -1) 0 0 var(--celeste), 0 var(--px) 0 0 var(--celeste),
-    calc(var(--px) * -1) 0 0 0 var(--celeste), var(--px) 0 0 0 var(--celeste),
-    6px 6px 0 0 var(--blackPixel);
+  --btn-c: var(--celeste);
 }
 
 .search-input {
@@ -468,12 +465,33 @@ input {
 /* ---------- Botones pixel art ----------
    Esquinas escalonadas (franjas de box-shadow), sombra dura sin blur y
    desplazamiento de 1-3px en hover/active. --drop = sombra dura. */
+/* FUENTE ÚNICA de la esquina pixelada: 4 franjas de box-shadow (arriba, abajo,
+   izquierda, derecha) del ancho/alto exacto de la caja, que dejan la esquina
+   escalonada. Todos los botones, la barra de búsqueda y el nav la reutilizan. */
+.search-bar,
+.action-btn,
+.ver-mas-btn,
+.search-btn,
+.close-btn,
+.detail-link,
+.nav-btn {
+  --btn-c: var(--gold);
+  --edge: 0 calc(var(--px) * -1) 0 0 var(--btn-c), 0 var(--px) 0 0 var(--btn-c),
+    calc(var(--px) * -1) 0 0 0 var(--btn-c), var(--px) 0 0 0 var(--btn-c);
+}
+
+.action-btn,
+.ver-mas-btn,
+.search-btn,
+.close-btn,
+.detail-link {
+  --drop: 5px 5px 0 0 var(--blackPixel);
+}
+
 .action-btn,
 .ver-mas-btn,
 .search-btn,
 .close-btn {
-  --btn-c: var(--gold);
-  --drop: 5px 5px 0 0 var(--blackPixel);
   min-height: 44px;
   min-width: 44px;
   margin: var(--px);
@@ -487,8 +505,7 @@ input {
   border: none;
   border-radius: 0;
   cursor: pointer;
-  box-shadow: 0 calc(var(--px) * -1) 0 0 var(--btn-c), 0 var(--px) 0 0 var(--btn-c),
-    calc(var(--px) * -1) 0 0 0 var(--btn-c), var(--px) 0 0 0 var(--btn-c),
+  box-shadow: var(--edge),
     inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 rgba(0, 0, 0, 0.35),
     inset var(--px) var(--px) 0 0 rgba(255, 255, 255, 0.14),
     var(--drop);
@@ -503,7 +520,8 @@ input {
 .action-btn:hover:not(:disabled),
 .ver-mas-btn:hover,
 .search-btn:hover,
-.close-btn:hover {
+.close-btn:hover,
+.detail-link:hover {
   background: var(--magicBlue);
   transform: translate(-2px, -2px);
 }
@@ -511,7 +529,8 @@ input {
 .action-btn:active:not(:disabled),
 .ver-mas-btn:active,
 .search-btn:active,
-.close-btn:active {
+.close-btn:active,
+.detail-link:active {
   --drop: 0 0 0 0 transparent;
   transform: translate(3px, 3px);
 }
@@ -519,7 +538,8 @@ input {
 .action-btn:focus-visible,
 .ver-mas-btn:focus-visible,
 .search-btn:focus-visible,
-.close-btn:focus-visible {
+.close-btn:focus-visible,
+.detail-link:focus-visible {
   outline: var(--px) solid var(--celeste);
   outline-offset: 7px;
   border-radius: 0;
@@ -689,20 +709,27 @@ input {
 
 .detail-link {
   flex: 1 1 auto;
-  font-size: 9px;
-  color: var(--gold);
-  text-decoration: none;
-  border: 1px solid rgba(212, 175, 55, 0.5);
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: var(--px);
   padding: 10px 10px;
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 1px;
+  color: var(--btn-c);
+  text-decoration: none;
   text-align: center;
   white-space: nowrap;
-  transition: background 0.15s ease;
-}
-
-.detail-link:active,
-.detail-link:hover {
-  background: rgba(212, 175, 55, 0.12);
+  background: var(--violet);
+  border: none;
+  border-radius: 0;
+  box-shadow: var(--edge),
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 0 rgba(0, 0, 0, 0.35),
+    inset var(--px) var(--px) 0 0 rgba(255, 255, 255, 0.14),
+    var(--drop);
+  transition: transform 0.08s steps(2), background 0.08s steps(2);
 }
 
 /* ---------- Carrusel de artes del mismo artista ---------- */
@@ -783,7 +810,8 @@ input {
   bottom: 0;
   z-index: 30;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
-  padding: 6px 12px env(safe-area-inset-bottom) 12px;
+  /* 4px de aire inferior para que el borde pixel de 3px de los botones no se recorte */
+  padding: 6px 12px calc(env(safe-area-inset-bottom) + 4px) 12px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -797,7 +825,7 @@ input {
 
 .nav-btn {
   width: 96px;
-  height: calc(var(--nav-h) - 12px);
+  height: calc(var(--nav-h) - 16px);
   border-radius: 0;
   background: transparent;
   border: none;
@@ -807,10 +835,13 @@ input {
   justify-content: center;
   cursor: pointer;
   opacity: 0.6;
+  --btn-c: transparent; /* borde invisible hasta hover/activo */
+  box-shadow: var(--edge);
   transition: opacity 0.08s steps(2), transform 0.08s steps(2);
 }
 
 .nav-btn:hover {
+  --btn-c: rgba(212, 175, 55, 0.5);
   opacity: 1;
   transform: translate(-1px, -1px);
 }
@@ -821,7 +852,7 @@ input {
 
 .nav-btn:focus-visible {
   outline: var(--px) solid var(--celeste);
-  outline-offset: -3px;
+  outline-offset: 5px;
 }
 
 .nav-btn img {
@@ -832,11 +863,9 @@ input {
 }
 
 .nav-btn.active {
+  --btn-c: var(--gold);
   opacity: 1;
   background: rgba(212, 175, 55, 0.18);
-  /* Borde pixel escalonado dorado dentro del botón */
-  box-shadow: inset 0 var(--px) 0 0 var(--gold), inset 0 calc(var(--px) * -1) 0 0 var(--gold),
-    inset var(--px) 0 0 0 var(--gold), inset calc(var(--px) * -1) 0 0 0 var(--gold);
 }
 
 /* ---------- Responsive ----------
@@ -1065,12 +1094,13 @@ input {
 
   /* Buscador alineado a la izquierda arriba; centrado cuando está vacío */
   #view-buscador .search-wrap {
-    max-width: 720px;
+    max-width: 100%; /* con resultados: mismo ancho que la grilla */
     margin: 0 0 18px 0;
-    transition: margin 0.45s ease;
+    transition: margin 0.45s ease, max-width 0.45s ease;
   }
 
   #view-buscador.search-idle .search-wrap {
+    max-width: 720px;
     margin-top: calc(50vh - 32px - 30px);
     margin-top: calc(50dvh - 32px - 30px);
     margin-left: max(0px, calc((100% - 720px) / 2));
