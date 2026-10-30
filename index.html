@@ -17,7 +17,7 @@
 <div class="app">
 
   <!-- ============ VISTA: BUSCADOR ============ -->
-  <section class="view" id="view-buscador" data-view="buscador">
+  <section class="view search-idle" id="view-buscador" data-view="buscador">
     <header class="app-header">
       <img src="assets/icons/magify_logo.png" alt="Magify" class="app-logo">
       <p class="brand">MAGIFY</p>
@@ -80,8 +80,8 @@
 
     <!-- Misma estructura que el detalle (renderCardView) -->
     <div class="detail-scroll random-view" id="randomCardView" aria-live="polite">
-      <div class="random-placeholder">
-        <p class="hint-text">Tocá la carta o el botón para revelar una al azar</p>
+      <div class="random-placeholder" tabindex="0" role="button" aria-label="Sacar una carta al azar">
+        <p class="hint-text"><span class="only-mobile">Tocá la carta o el botón para revelar una al azar</span><span class="only-desktop">Haz clic para sacar una carta al azar</span></p>
       </div>
     </div>
   </section>
@@ -107,6 +107,7 @@
   <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
     <!-- Logo: sólo visible en desktop (navbar lateral) -->
     <img src="assets/icons/magify_logo.png" alt="Magify" class="side-logo">
+    <p class="brand side-brand">MAGIFY</p>
     <button class="nav-btn active" data-target="buscador" aria-label="Buscar" aria-current="page">
       <img src="assets/icons/buscar_pixel_icon.png" alt="">
     </button>
