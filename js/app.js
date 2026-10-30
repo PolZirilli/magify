@@ -89,11 +89,36 @@ function initBuscador() {
 
   /* Confirma una consulta: cancela el predictivo pendiente, cierra la lista,
      baja el teclado en móvil y busca. */
+  const viewEl = document.getElementById("view-buscador");
+
+  /* Desktop: con el input vacío y sin resultados el buscador va centrado;
+     al buscar sube arriba a la izquierda (la transición es CSS). */
+  let confirmed = false; // hubo una búsqueda confirmada con Enter / botón / sugerencia
+  const updateIdle = () => {
+    if (input.value.trim() === "" && resultsState.cards.length === 0) confirmed = false;
+    viewEl.classList.toggle("search-idle", !confirmed && resultsState.cards.length === 0);
+  };
+
+  /* Placeholder según breakpoint (mobile conserva el texto original) */
+  const updatePlaceholder = () => {
+    input.placeholder = desktopMQ.matches ? "Ingresa el nombre de tu carta..." : "Nombre de la carta...";
+  };
+  updatePlaceholder();
+  if (desktopMQ.addEventListener) desktopMQ.addEventListener("change", updatePlaceholder);
+  else desktopMQ.addListener(updatePlaceholder);
+
   const confirmSearch = (query) => {
+    if (query) {
+      confirmed = true;
+      viewEl.classList.remove("search-idle");
+    }
     autocomplete.cancel();
     if (!desktopMQ.matches) input.blur();
     return runSearch(query, status, grid);
   };
+
+  input.addEventListener("input", updateIdle);
+  updateIdle();
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -377,10 +402,12 @@ function initBarajar() {
 
     try {
       const card = await ScryfallService.fetchRandomCard();
-      renderCardView(card, view);
+      const hadFocus = view.contains(document.activeElement);
+      renderCardView(card, view, { shuffle: true });
+      if (hadFocus) view.querySelector(".detail-img")?.focus();
     } catch (err) {
       console.error(err);
-      view.innerHTML = `<div class="random-placeholder"><p class="hint-text">Error al obtener carta. Tocá para reintentar.</p></div>`;
+      view.innerHTML = `<div class="random-placeholder" tabindex="0" role="button" aria-label="Reintentar barajar"><p class="hint-text">Error al obtener carta. Tocá para reintentar.</p></div>`;
     } finally {
       view.classList.remove("loading");
       shuffleBtn.disabled = false;
@@ -392,6 +419,13 @@ function initBarajar() {
   // Tocar la carta (o el recuadro inicial) también baraja
   view.addEventListener("click", (e) => {
     if (e.target.closest(".detail-img, .random-placeholder")) shuffle();
+  });
+  // Carta focuseable: Enter / Espacio también barajan
+  view.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest(".detail-img, .random-placeholder")) {
+      e.preventDefault();
+      shuffle();
+    }
   });
 }
 
@@ -411,11 +445,14 @@ function showCardDetail(card) {
  * Render compartido por el detalle y Barajar: imagen + datos + carrusel
  * de otras obras del artista. Una sola función para que no diverjan.
  */
-function renderCardView(card, container) {
+function renderCardView(card, container, opts = {}) {
   const imgUrl = card.image_uris?.large || card.image_uris?.normal || null;
 
   container.innerHTML = `
-    ${imgUrl ? `<img class="detail-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(card.name)}">` : ""}
+    <div class="detail-media">
+      ${imgUrl ? `<img class="detail-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(card.name)}"${opts.shuffle ? ' tabindex="0" role="button" aria-label="Barajar otra carta al azar"' : ""}>` : ""}
+      ${opts.shuffle ? `<p class="shuffle-hint">Haz clic en la carta para barajar de nuevo</p>` : ""}
+    </div>
     <div class="detail-info">
       <p class="detail-name">${escapeHtml(card.name)}</p>
 
