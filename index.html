@@ -64,25 +64,25 @@
 
   <!-- ============ VISTA: BARAJAR ============ -->
   <section class="view hidden" id="view-barajar" data-view="barajar">
-    <header class="app-header app-header-compact">
-      <img src="assets/icons/magify_logo.png" alt="Magify" class="app-logo">
-      <div class="header-text">
-        <p class="brand">MAGIFY</p>
-        <h1 class="title-gold">Barajar</h1>
-      </div>
-    </header>
+    <div class="barajar-top">
+      <header class="app-header app-header-compact">
+        <img src="assets/icons/magify_logo.png" alt="Magify" class="app-logo">
+        <div class="header-text">
+          <p class="brand">MAGIFY</p>
+          <h1 class="title-gold">Barajar</h1>
+        </div>
+      </header>
 
-    <div class="barajar-stage" id="barajarStage">
-      <div class="barajar-card-col">
-        <div class="random-card-wrap" id="randomCardWrap" role="button" tabindex="0" aria-label="Barajar carta aleatoria">
-          <p class="hint-text">Tocá la carta para revelar una al azar</p>
-        </div>
-        <div class="barajar-actions">
-          <button class="action-btn" id="shuffleBtn" type="button" aria-label="Barajar carta aleatoria">Barajar</button>
-          <button class="ver-mas-btn hidden" id="verMasBtn" type="button" aria-label="Ver más datos de la carta">ver más ↗</button>
-        </div>
+      <div class="barajar-bar">
+        <button class="action-btn shuffle-btn" id="shuffleBtn" type="button" aria-label="Barajar carta aleatoria">Barajar</button>
       </div>
-      <aside class="barajar-info hidden" id="randomInfo" aria-live="polite" aria-label="Datos de la carta"></aside>
+    </div>
+
+    <!-- Misma estructura que el detalle (renderCardView) -->
+    <div class="detail-scroll random-view" id="randomCardView" aria-live="polite">
+      <div class="random-placeholder">
+        <p class="hint-text">Tocá la carta o el botón para revelar una al azar</p>
+      </div>
     </div>
   </section>
 
@@ -105,6 +105,8 @@
 
   <!-- ============ NAV INFERIOR ============ -->
   <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
+    <!-- Logo: sólo visible en desktop (navbar lateral) -->
+    <img src="assets/icons/magify_logo.png" alt="Magify" class="side-logo">
     <button class="nav-btn active" data-target="buscador" aria-label="Buscar" aria-current="page">
       <img src="assets/icons/buscar_pixel_icon.png" alt="">
     </button>
